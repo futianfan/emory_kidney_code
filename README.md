@@ -1,6 +1,9 @@
 code for processing Emory's kidney dataset, which is not public.
 
-see run.sh
 
-data are not provided here
+data are not provided here.
+
+To run the code, you need to "mkdir data" and then put the csv file in data directory.
+
+
 
