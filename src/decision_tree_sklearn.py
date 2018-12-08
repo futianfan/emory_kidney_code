@@ -5,7 +5,7 @@ from os import system
 from graphviz import Source
 from time import time
 
-clf = tree.DecisionTreeClassifier(max_depth = 3)
+clf = tree.DecisionTreeClassifier(max_depth = 6)
 dataFolder = '/Users/futianfan/Downloads/Gatech_Courses/emory_kidney/data'
 train_data = np.load('{}/train.npy'.format(dataFolder))
 test_data = np.load('{}/test.npy'.format(dataFolder))
