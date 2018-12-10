@@ -8,5 +8,11 @@ To run the code, you need to "mkdir data" and then put the csv file in data dire
 for cox regression model, the code is in the directory ./scikit-survival/
 main reference is: https://github.com/sebp/scikit-survival, which is not uploaded in this repository. 
 
+to run COX regression:
+	cd scikit-survival/
+	source activate sksurv2
+	python introduce2.py
+
+
 
 

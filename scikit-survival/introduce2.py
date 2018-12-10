@@ -18,12 +18,13 @@ trainData = np.load(trainFile)
 testFile = os.path.join(dataFolder, 'test_cox.npy')
 testData = np.load(testFile)
 print(trainData.shape)
-cutoff = 200
-trainData = trainData[:,:cutoff]
-testData = testData[:,:cutoff]
+lowerbound = 80
+upperbound = 300
+#trainData = trainData[:,:cutoff]
+#testData = testData[:,:cutoff]
 train_num = trainData.shape[0]
 trainData = np.concatenate([trainData, testData], 0)
-
+trainData = trainData[:,lowerbound:upperbound]
 
 data_y = trainData[:,:2] 
 data_x = trainData[:,2:]
@@ -40,7 +41,6 @@ t1 = time()
 estimator = CoxPHSurvivalAnalysis()
 estimator.fit(data_x[:train_num], data_y[:train_num])
 print('fitting estimate cost {} seconds'.format(int(time() - t1)))
-
 print(estimator.score(data_x[train_num:], data_y[train_num:]))
 
 

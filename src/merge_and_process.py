@@ -1,9 +1,9 @@
 from __future__ import print_function
 import pandas as pd
 import numpy as np
+import os, pickle 
 #import cPickle as pickle
-import pickle 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from collections import Counter
 from dataPrepFunctions import binDataByQuartiles
 '''
@@ -15,13 +15,22 @@ from time import time
 
 time_start = time()
 fraction = 0.5  ### 95% complete -> 0.05;   50% complte -> 0.5
-count_threshold = 10 
-dataFolder = '/Users/futianfan/Downloads/Gatech_Courses/emory_kidney/data'
+count_threshold = 4
+fillna_value = 2000 
+dataFolder = './data' ##'/Users/futianfan/Downloads/Gatech_Courses/emory_kidney/data'
 trainData = pd.read_csv('{}/deidData_GFtrainData_Nov2018.csv'.format(dataFolder))
 testData = pd.read_csv('{}/deidData_GFtestData_Nov2018.csv'.format(dataFolder))
+coxData = pd.read_csv(os.path.join(dataFolder, 'graftFailure_labelData.csv'))
+
 Num_train = trainData.shape[0]
 trainData = pd.concat([trainData, testData])
 Ntrain = trainData.shape[0]
+droplist_cox = ['gf_6months', 'gf_1year', 'gf_3year', 'gf_allTime']
+coxData.drop(droplist_cox, axis = 'columns', inplace = True)
+trainData = pd.merge(trainData, coxData)
+
+trainData['gf_days_final'] = trainData['gf_days_final'].fillna(fillna_value)
+assert trainData['gf_days_final'].dtypes == float ### which is different from 'gf_1year'
 
 # Drop columns with 0 variance
 trainColsToDrop = trainData.columns[trainData.nunique() == 1].values
@@ -30,16 +39,19 @@ trainData.drop(trainColsToDrop,axis = 'columns',inplace = True)
 stateVariables = ['perm_state_l_22','dstate_22','state_residenc','perm_state_22']
 droplist = ['usrds_id','gf_6months','gf_3year'] + ['perm_state_l_22','dstate_22','state_residenc','perm_state_22'] \
 + ['unosstat_waitlist_ki']  + ['rsex_22'] \
- + ['matc_22'] + ['first_mcare_pta_reason_patients', 'first_mcare_pta_status_patients'] \
- + ['first_mcare_ptb_reason_patients', 'first_mcare_ptb_status_patients']
+ + ['matc_22'] ## + ['first_mcare_pta_reason_patients', 'first_mcare_pta_status_patients'] \
+## + ['first_mcare_ptb_reason_patients', 'first_mcare_ptb_status_patients'] 
+# \
+# + ['gf_1year']
 ## ['don_hiv_22'] 
 
 trainData.drop(droplist, axis = 'columns', inplace = True)
 
 # Create feature lists
-nonFeatures = ['gf_1year']
+nonFeatures = ['gf_days_final', 'gf_1year']
 features = [x for x in trainData.columns ]
 trainFeature = trainData[features ]
+
 
 ### 1. 95% completeness
 complete_filter = lambda x: trainFeature[x].isna().sum() < fraction * len(trainFeature[x])
@@ -48,26 +60,66 @@ assert 'don_hiv_22' in features_complete
 trainFeature = trainFeature[features_complete]
 print('after 95 completeness, feature dim is {}'.format(len(features_complete)))
 
+
+
+
+
+
 ### 2.  TYPE filter: detect categoricalVariables and nonCategoricalVariables.
 nonCategoricalVariables = list(trainFeature.columns[trainFeature.dtypes == float])
+assert 'gf_days_final' in nonCategoricalVariables
+for i in nonFeatures:
+  if trainFeature[i].dtype != float:
+    continue 
+  idx = nonCategoricalVariables.index(i)
+  nonCategoricalVariables = nonCategoricalVariables[:idx] + nonCategoricalVariables[idx+1:]
 print('1. noncategorical num is {}'.format(len(nonCategoricalVariables)))      ### 59
 categoricalVariables = list(trainFeature.columns[trainFeature.dtypes == object])
 print('1. categorical num is {}'.format(len(categoricalVariables)))            ### 45
-  ### throw away the column that has too many categories  count_threshold 
-'''
+
+#special_feature = ['first_mcare_pta_reason_patients', 'first_mcare_pta_status_patients']
+
+special_feature = ['first_mcare_pta_reason_patients', 'first_mcare_pta_status_patients', 'first_mcare_ptb_reason_patients', 'first_mcare_ptb_status_patients']
+special_feature = []
+#print(categoricalVariables.index('first_mcare_pta_reason_patients'))
+#print(categoricalVariables.index('first_mcare_pta_status_patients'))
+#print(categoricalVariables.index('first_mcare_ptb_reason_patients'))
+#print(categoricalVariables.index( 'first_mcare_ptb_status_patients'))
+
+##  ['first_mcare_pta_reason_patients', 'first_mcare_pta_status_patients'] \
+## + ['first_mcare_ptb_reason_patients', 'first_mcare_ptb_status_patients'] 
+
+
+### 3.  throw away the column that has too many categories  count_threshold 
+#print(trainFeature['first_mcare_pta_reason_patients'].nunique()) ## 13 
 trainColsToDrop = trainFeature.columns[trainFeature.nunique() > count_threshold].values
 trainColsToDrop = set(trainColsToDrop)
 trainColsToDrop = list(trainColsToDrop.intersection(set(categoricalVariables)))
+
+trainColsToDrop = set(trainColsToDrop)
+for i in special_feature:
+  if i in trainColsToDrop:
+    trainColsToDrop.remove(i)
+trainColsToDrop = list(trainColsToDrop)
+
 trainColsToDrop = np.array(trainColsToDrop)
 trainFeature.drop(trainColsToDrop,axis = 'columns',inplace = True)
-'''  ### throw away the column that has too many categories  count_threshold
+### 3. throw away the column that has too many categories  count_threshold
+
+
+###  4. re-compute categoricalVariables
+categoricalVariables = list(trainFeature.columns[trainFeature.dtypes == object])
+print('1. categorical num is {}'.format(len(categoricalVariables)))            ### 45
+
 
 
 ### compute num of categorical and noncategorical features
+'''
 nonCategoricalVariables = list(trainFeature.columns[trainFeature.dtypes == float])
 print('2. noncategorical num is {}'.format(len(nonCategoricalVariables)))      ### 59
 categoricalVariables = list(trainFeature.columns[trainFeature.dtypes == object])
 print('2. categorical num is {}'.format(len(categoricalVariables)))            ### 45
+'''
 assert 'acute_rej_epi_22' in nonCategoricalVariables
 
 
@@ -90,7 +142,6 @@ categoricalVariables = list(trainFeature.columns[trainFeature.dtypes == object])
 print('3. categorical num is {}'.format(len(categoricalVariables)))            ### 45
 
 
-
 def PdFrame2FileLine(DataFrame, categoricalVariables, nonCategoricalVariables, nonFeatures, separate_symbol = ';'):
   #DataFrame = trainFeature, testFeature
   N = DataFrame.shape[0]
@@ -101,8 +152,14 @@ def PdFrame2FileLine(DataFrame, categoricalVariables, nonCategoricalVariables, n
   ### nonFeatures
   for i,feat in enumerate(nonFeatures):
     dataColumn = DataFrame[feat].to_string()
+    #print(dataColumn.split('\n')[:5])
+    #print(dataColumn.split('\n')[-5:])
     #assert separate_symbol not in dataColumn
-    dataColumn = [float(i.split()[1]) for i in dataColumn.split('\n')]
+    #print(feat)
+    #print(dataColumn)
+    split_data = dataColumn.split('\n') # if feat == 'gf_days_final' else dataColumn.split('\n')
+    #print(len(split_data))
+    dataColumn = [float(i.split()[1]) for i in split_data]
     dataColumn = np.array(dataColumn)
     data[:,i] = dataColumn
     feat_name.append(feat)
@@ -119,13 +176,17 @@ def PdFrame2FileLine(DataFrame, categoricalVariables, nonCategoricalVariables, n
     dataColumn = [i.split()[1] for i in dataColumn.split('\n')]
     value_set = list(set(dataColumn))
     leng = len(value_set)
-    num_feat += leng
+    ##num_feat += leng
+    num_feat += 1 if leng == 2 else leng
     print('set length is {}'.format(leng))
     value_indx = lambda x: value_set.index(x)
     dataColumn = list(map(value_indx, dataColumn))
     def create_one_hot_vector(indx):
-      vec = [0] * leng
-      vec[indx] = 1
+      if leng == 2:
+        vec = [indx]
+      else:
+        vec = [0] * leng
+        vec[indx] = 1
       return vec
     datamat = list(map(create_one_hot_vector, dataColumn))
     datamat = np.array(datamat, dtype = float)
@@ -139,9 +200,11 @@ def PdFrame2FileLine(DataFrame, categoricalVariables, nonCategoricalVariables, n
 t1 = time()
 data, feat_name = PdFrame2FileLine(trainFeature, categoricalVariables, nonCategoricalVariables, nonFeatures, separate_symbol = ';')
 print('Pandas Frame => File Line, cost {} seconds'.format(time() - t1))
+print('data shape is ', end = ' ')
+print(data.shape)
 
-np.save('{}/train.npy'.format(dataFolder), data[:Num_train,:])
-np.save('{}/test.npy'.format(dataFolder), data[Num_train:,:])
+np.save('{}/train_cox.npy'.format(dataFolder), data[:Num_train,:])
+np.save('{}/test_cox.npy'.format(dataFolder), data[Num_train:,:])
 with open('{}/feature_name_for_all_data'.format(dataFolder), 'w') as fout:
   for i in feat_name:
     fout.write(i + '\t')

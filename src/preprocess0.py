@@ -40,11 +40,6 @@ trainData.drop(droplist, axis = 'columns', inplace = True)
 nonFeatures = ['gf_1year']
 features = [x for x in trainData.columns ]
 trainFeature = trainData[features ]
-#assert 'gf_1year' not in trainFeature.columns
-#print(trainFeature['gf_1year'].dtypes)
-#exit()
-
-
 
 ### 1. 95% completeness
 complete_filter = lambda x: trainFeature[x].isna().sum() < fraction * len(trainFeature[x])
@@ -58,7 +53,6 @@ nonCategoricalVariables = list(trainFeature.columns[trainFeature.dtypes == float
 print('1. noncategorical num is {}'.format(len(nonCategoricalVariables)))      ### 59
 categoricalVariables = list(trainFeature.columns[trainFeature.dtypes == object])
 print('1. categorical num is {}'.format(len(categoricalVariables)))            ### 45
-
   ### throw away the column that has too many categories  count_threshold 
 '''
 trainColsToDrop = trainFeature.columns[trainFeature.nunique() > count_threshold].values
